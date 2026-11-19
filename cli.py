@@ -95,7 +95,6 @@ def main():
                 f.write("This is the first line.\n")
             with open(f"{session_name}.memory", "w", encoding="utf-8") as f:
                 f.write(context)
-        #print(f"{context}")
         # Prepare the payload
         payload = {
             "prompt": user_message,
@@ -155,14 +154,12 @@ def main():
                     context = context.replace("\\", "")
                     print("\n\n")
 
-            #print("--- Response ---")
-            #print(context)
         except requests.exceptions.RequestException as e:
             print(f"Request failed: {e}")
         except json.JSONDecodeError:
             print("Failed to decode JSON response.")
-        #except Exception as e:
-        #    print(f"An error occurred: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
