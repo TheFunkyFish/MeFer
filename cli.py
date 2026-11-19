@@ -1,5 +1,74 @@
 import requests
 import json
+import re
+class LLMOutputCleaner:
+    """
+    A class to extract and clean text from LLM outputs wrapped in markdown code blocks.
+    
+    Handles:
+    - Extraction of content between ``` markers.
+    - Removal of language identifier after opening ``` (e.g., 'python', 'json').
+    - Replacement of literal '\\n' sequences with actual newlines.
+    """
+
+    def __init__(self):
+        # Regex to match the content inside triple backticks.
+        # It captures everything between the first ``` and the next ```.
+        # It allows for optional whitespace and language tags after the opening ```.
+        self.code_block_pattern = re.compile(
+            r'```(?:\w+)?\s*\n(.*?)\n?```',
+            re.DOTALL
+        )
+
+    def extract_and_clean(self, raw_output: str) -> str:
+        """
+        Extracts the code block content, removes the language tag,
+        and replaces literal '\\n' with actual newlines.
+        
+        Args:
+            raw_output (str): The raw string returned by the LLM.
+            
+        Returns:
+            str: The cleaned content with actual newlines.
+        """
+        if not raw_output:
+            return ""
+
+        # Step 1: Try to find the code block
+        match = self.code_block_pattern.search(raw_output)
+        
+        if match:
+            # Extract the content group (group 1)
+            content = match.group(1)
+        else:
+            # Fallback: If no code block found, assume the whole string is the content
+            # This is a safety net, but you might want to raise an error instead.
+            content = raw_output.strip()
+
+        # Step 2: Clean up the content
+        # Replace literal backslash-n (\n) with actual newline characters
+        # Note: In Python strings, '\\n' represents the two characters '\' and 'n'
+        cleaned_content = content.replace('\\n', '\n')
+
+        # Optional: Strip leading/trailing whitespace if desired
+        # cleaned_content = cleaned_content.strip()
+
+        return cleaned_content
+
+    def extract_only(self, raw_output: str) -> str:
+        """
+        Extracts the raw content without replacing literal \n.
+        Useful if you want to inspect the raw extracted text.
+        """
+        if not raw_output:
+            return ""
+        
+        match = self.code_block_pattern.search(raw_output)
+        if match:
+            return match.group(1)
+        else:
+            return raw_output.strip()
+cleaner = LLMOutputCleaner()
 
 
 def main():
@@ -37,7 +106,7 @@ def main():
             #print(f"{data}")
             # Extract the assistant response
             if "choices" in data and len(data["choices"]) > 0:
-                assistant_response = data["choices"][0].get("text", "").strip()
+                assistant_response = cleaner.extract_and_clean(data["choices"][0].get("text", "").strip())
             else:
                 assistant_response = ""
             print(f"{assistant_response}")

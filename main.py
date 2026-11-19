@@ -5,10 +5,11 @@ from engine import QwenInferenceService
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+from config import ConfigManager
+import re
 # Configure model path via environment variable or default path
-MODEL_PATH = os.getenv("QWEN_MODEL_PATH", "/opt/models/Qwen3.8-27B-UD-IQ3_S.gguf")
-inference_service = QwenInferenceService(model_path=MODEL_PATH, n_ctx=8192)
+cfg = ConfigManager('config.yaml')
+inference_service = QwenInferenceService(cfg)
 
 
 @asynccontextmanager
@@ -34,12 +35,67 @@ class ChatRequest(BaseModel):
   temperature: float = Field(default=0.6, ge=0.0, le=2.0)
   stream: bool = False
 
+def extract_tool_calls(raw_template: str) -> list[dict]:
+    """
+    Extract tool calls from a raw Qwen 3.8 template string.
+    
+    Qwen 3.8 uses a specific format for tool calls within the template.
+    Tool calls are typically embedded in the assistant's response using a
+    structured format that includes the tool name and arguments.
+    
+    The expected format in the raw template string looks like:
+    <tool_call>
+    {"name": "tool_name", "arguments": {"arg1": "value1", ...}}
+    </tool_call>
+    
+    Or potentially in a JSON-like block within the assistant message.
+    
+    Args:
+        raw_template: The raw Qwen 3.8 template string containing potential tool calls.
+        
+    Returns:
+        A list of dictionaries, each representing a tool call with 'name' and 'arguments' keys.
+    """
+    tool_calls = []
+    
+    # Pattern to match tool call blocks
+    # Qwen 3.8 may use various formats; we'll try common patterns
+    
+    # Pattern 1: <tool_call> ... </tool_call> blocks
+    pattern1 = re.compile(r'<tool_call>\s*(\{.*?\})\s*</tool_call>', re.DOTALL)
+    
+    # Pattern 2: JSON objects with "name" and "arguments" keys that look like tool calls
+    # This is a fallback for cases where tool calls are embedded differently
+    pattern2 = re.compile(r'\{\s*"name"\s*:\s*"[^"]*"\s*,\s*"arguments"\s*:\s*\{.*?\}\s*\}', re.DOTALL)
+    
+    # Try pattern 1 first
+    matches1 = pattern1.findall(raw_template)
+    for match in matches1:
+        try:
+            tool_call = json.loads(match)
+            if 'name' in tool_call and 'arguments' in tool_call:
+                tool_calls.append(tool_call)
+        except json.JSONDecodeError:
+            continue
+    
+    # If no matches from pattern 1, try pattern 2
+    if not tool_calls:
+        matches2 = pattern2.findall(raw_template)
+        for match in matches2:
+            try:
+                tool_call = json.loads(match)
+                if 'name' in tool_call and 'arguments' in tool_call:
+                    tool_calls.append(tool_call)
+            except json.JSONDecodeError:
+                continue
+    
+    return tool_calls
 
 @app.get("/health")
 async def health_check():
   return {
       "status": "ready" if inference_service.llm is not None else "loading",
-      "model": MODEL_PATH,
+      "model": cfg.get("model_path")
   }
 
 
@@ -74,7 +130,8 @@ class CompletionRequest(BaseModel):
     stream: bool = False
     max_tokens: int = 8192
     temperature: float = 0.0
-
+from harness import CodingHarness
+ch = CodingHarness()
 @app.post("/v1/completions")
 async def completions(request: CompletionRequest):
     if inference_service.llm is None:
@@ -110,7 +167,10 @@ async def completions(request: CompletionRequest):
     reply['context'] = f"""{raw_prompt}
 {reply['choices'][0]['text']}<|im_end|>
 """
-
+    reply_string = reply['choices'][0]['text']
+    tools = extract_tool_calls(reply_string) 
+    print(f"{tools}")
+    for tool in tools:
+        print(f"{tool}")
     # content = reply['choices'][0]['text'];
     return reply
-
