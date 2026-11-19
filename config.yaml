@@ -5,7 +5,7 @@ model_path: "/opt/models/Qwen3.8-27B-UD-IQ3_S.gguf"
 n_gpu_layers: 999             # Offload all 64 layers to VRAM (~16.5 GB for Q4_K_M)
 split_mode: 1                # 1 = LAYER split (best for PCIe multi-GPU setups)
 main_gpu: 0
-tensor_split: null           # For 3x RTX 3060 (12GB each), set to: [0.33, 0.33, 0.34]
+tensor_split: [0.7,0.3]           # For 3x RTX 3060 (12GB each), set to: [0.33, 0.33, 0.34]
 rpc_servers: null
 vocab_only: false
 use_mmap: false               # Fast disk mapping; keeps system RAM overhead low
@@ -17,7 +17,7 @@ kv_overrides: null
 n_ctx: 131072                 # Fits comfortably in remaining ~15 GB VRAM with f16 KV cache
 n_batch: 1024                # Balanced prompt processing speed for RTX 3060 memory bandwidth
 n_ubatch: 512                # Physical micro-batch size for Ampere tensor cores
-n_threads: 8                 # Set to physical CPU core count (used for prompt/token prep)
+n_threads: 12                 # Set to physical CPU core count (used for prompt/token prep)
 n_threads_batch: 8
 
 # --- RoPE Scaling & Attention ---
@@ -34,9 +34,9 @@ yarn_beta_slow: 1.0
 yarn_orig_ctx: 262144
 
 # --- KV Cache & Memory Precision ---
-type_k: 1                    # 1 = f16 (prevents reasoning degradation on long chains)
+type_k: 2                    # 1 = f16 (prevents reasoning degradation on long chains)
 type_v: 1                    # 1 = f16 (requires flash_attn: true for optimal speed)
-offload_kqv: true            # Keep KV cache in GPU VRAM
+offload_kqv: true           # Keep KV cache in GPU VRAM
 no_perf: false
 
 # --- Generation, Chat & Adapters ---

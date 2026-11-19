@@ -130,22 +130,23 @@ class QwenInferenceService:
       elapsed_seconds = end_time - start_time
       token_generated = elapsed_seconds/usage.get('total_tokens', 1)
       #print(f"Elapsed time: {elapsed_seconds} seconds @ 1 token per {token_generated} second for {1/token_generated} TPS ")
-      print(f"{response}")
+      #print(f"{response}")
       return response
 
   async def stream_generate(
       self,
-      messages: List[Dict[str, str]],
+      messages: str = '', #List[Dict[str, str]],
       max_tokens: int = 512,
       temperature: float = 0.6,
+      context: str = ''
   ) -> AsyncGenerator[str, None]:
     """Yields Server-Sent Events (SSE) chunks as tokens are generated on the GPU."""
     if self.llm is None:
       raise RuntimeError("Model is not loaded.")
 
     async with self._lock:
-      stream = self.llm.create_chat_completion(
-          messages=messages,
+      stream = self.llm.create_completion(
+          messages,
           max_tokens=max_tokens,
           temperature=temperature,
           stream=True,
@@ -156,12 +157,15 @@ class QwenInferenceService:
 
       while True:
         chunk = await asyncio.to_thread(_next_chunk)
+        #print(f"{chunk}")
         if chunk is None:
           break
-        delta = chunk["choices"][0]["delta"]
-        if "content" in delta and delta["content"]:
-          payload = json.dumps({"content": delta["content"]})
-          yield f"data: {payload}\n\n"
+        delta = chunk["choices"][0]
+        #print(f"{delta}")
+        if "text" in delta and delta["text"]:
+            print(f"{delta['text']}")
+            payload = json.dumps({"content": f"{delta["text"]}", "context": f"{context}"})
+            yield f"{payload}"
 
-      yield "data: [DONE]\n\n"
+#      yield "[DONE]\n\n"
 

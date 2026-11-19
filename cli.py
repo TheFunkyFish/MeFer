@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+import sys
 class LLMOutputCleaner:
     """
     A class to extract and clean text from LLM outputs wrapped in markdown code blocks.
@@ -85,36 +86,75 @@ def main():
         payload = {
             "prompt": user_message,
             "system": system_prompt,
-            "context": context
+            "context": context,
+            "stream": True
         }
 
         # Set headers
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "*/*"
         }
 
         # Make the POST request
         try:
-            response = requests.post(
+            json_string = ''
+            tmp_json = ''
+            data = {}
+            with requests.post(
                 "http://localhost:8003/v1/completions",
                 headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            # Parse the response
-            data = response.json()
-            #print(f"{data}")
-            # Extract the assistant response
-            if "choices" in data and len(data["choices"]) > 0:
-                assistant_response = cleaner.extract_and_clean(data["choices"][0].get("text", "").strip())
-            else:
-                assistant_response = ""
-            print(f"{assistant_response}")
-            # The context prompt is always returned with the assistant response appended
-            context = data['context']
+                json=payload,
+                stream=True
+                ) as response:
+                    response.raise_for_status()
+                    if not response:
+                        break
+                    for chunk in response.iter_content(chunk_size=1,decode_unicode=True):
+#                        print(f"{chunk}")
+                        if chunk:
+                            json_string = f"{json_string}{chunk}"
+                        #else:
+                            #tmp_json = json_string
+                            #json_string = ""
+                            #break
+                        try:
+                            data = json.loads(json_string)
+                            json_string = ''
+                            #print(f"{data}")
+                        except json.JSONDecodeError as ed:
+                            fake = 1
+                            #json_string = f"{json_string}{chunk}"
+#                            print(f"Error decoding: {ed}")
+                            data = False
+                            continue
+#                        print(f"{data}")
+ #                       print(tmp_json)
+                        #print(json_string)
+                        # Extract the assistant response
+                        if 1 == 1:
+                            fake = True
+                        if "content" in data:
+                            content = data.get("content", "")#.strip() 
+                            assistant_response = content #cleaner.extract_and_clean(content)
+                        elif "choices" in data and len(data["choices"]) > 0:
+                            #print(f"choices: {data['choices']}")
+                            assistant_response = cleaner.extract_and_clean(data["choices"][0].get("text", "").strip())
+                        elif data:
+                            assistant_response = f"{data}"
+                        #print(assistant_response)
+                        #assistant_response = json.loads(response.text).get('content','')
+                        sys.stdout.write(f"{assistant_response}")
+                        # Force the terminal to render the text immediately
+                        sys.stdout.flush()
 
-            # Replace literal \s
-            context = context.replace("\\", "")
+                        #print(f"{assistant_response}")
+                        # The context prompt is always returned with the assistant response appended
+                        #context = data['context']
+
+                        # Replace literal \s
+                        #context = context.replace("\\", "")
+                    print("\n\n")
 
             #print("--- Response ---")
             #print(context)
@@ -122,8 +162,8 @@ def main():
             print(f"Request failed: {e}")
         except json.JSONDecodeError:
             print("Failed to decode JSON response.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        #except Exception as e:
+        #    print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":

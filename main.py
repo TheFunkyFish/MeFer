@@ -152,18 +152,18 @@ async def completions(request: CompletionRequest):
     if request.stream:
         return StreamingResponse(
             inference_service.stream_generate(
-                messages=formatted_messages,
+                full_prompt,
                 max_tokens=request.max_tokens,
                 temperature=request.temperature,
             ),
             media_type="text/event-stream",
         )
-
-    reply = await inference_service.complete(
-        full_prompt,
-        max_tokens=request.max_tokens,
-        temperature=request.temperature,
-    )
+    else:
+        reply = await inference_service.complete(
+            full_prompt,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
     reply['context'] = f"""{raw_prompt}
 {reply['choices'][0]['text']}<|im_end|>
 """
