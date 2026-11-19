@@ -74,14 +74,28 @@ cleaner = LLMOutputCleaner()
 
 def main():
     # Get user input
+    session_open = input("Open Session: ")
     context = ""
-    system_prompt = input("Enter system prompt: ")
+    system_prompt = ""
+    if session_open != "":
+        with open(f"{session_open}.system", "r") as f:
+            system_prompt = f.read()
+    if system_prompt == "":
+        system_prompt = input("Enter system prompt: ")
+    if session_open != "":
+        with open(f"{session_open}.memory", "r") as f:
+            context = f.read()
     while(1):
         user_message = input("Enter your message: ")
-
-        # Build the context prompt by combining system and user prompts
-        # The context prompt is a template that includes both system and user parts
-
+        if user_message == ':q':
+            sys.exit(0)
+        if user_message == ':w':
+            session_name = input("Enter Session Name (File): ")
+            with open(f"{session_name}.system", "w", encoding="utf-8") as f:
+                f.write("This is the first line.\n")
+            with open(f"{session_name}.memory", "w", encoding="utf-8") as f:
+                f.write(context)
+        #print(f"{context}")
         # Prepare the payload
         payload = {
             "prompt": user_message,
@@ -111,26 +125,15 @@ def main():
                     if not response:
                         break
                     for chunk in response.iter_content(chunk_size=1,decode_unicode=True):
-#                        print(f"{chunk}")
                         if chunk:
                             json_string = f"{json_string}{chunk}"
-                        #else:
-                            #tmp_json = json_string
-                            #json_string = ""
-                            #break
                         try:
                             data = json.loads(json_string)
                             json_string = ''
-                            #print(f"{data}")
                         except json.JSONDecodeError as ed:
                             fake = 1
-                            #json_string = f"{json_string}{chunk}"
-#                            print(f"Error decoding: {ed}")
                             data = False
                             continue
-#                        print(f"{data}")
- #                       print(tmp_json)
-                        #print(json_string)
                         # Extract the assistant response
                         if 1 == 1:
                             fake = True
@@ -138,22 +141,18 @@ def main():
                             content = data.get("content", "")#.strip() 
                             assistant_response = content #cleaner.extract_and_clean(content)
                         elif "choices" in data and len(data["choices"]) > 0:
-                            #print(f"choices: {data['choices']}")
                             assistant_response = cleaner.extract_and_clean(data["choices"][0].get("text", "").strip())
                         elif data:
                             assistant_response = f"{data}"
-                        #print(assistant_response)
-                        #assistant_response = json.loads(response.text).get('content','')
                         sys.stdout.write(f"{assistant_response}")
                         # Force the terminal to render the text immediately
                         sys.stdout.flush()
 
-                        #print(f"{assistant_response}")
                         # The context prompt is always returned with the assistant response appended
-                        #context = data['context']
+                        context = data.get('context')
 
                         # Replace literal \s
-                        #context = context.replace("\\", "")
+                    context = context.replace("\\", "")
                     print("\n\n")
 
             #print("--- Response ---")

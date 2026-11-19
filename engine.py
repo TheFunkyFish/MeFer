@@ -129,8 +129,6 @@ class QwenInferenceService:
       end_time = time.perf_counter()
       elapsed_seconds = end_time - start_time
       token_generated = elapsed_seconds/usage.get('total_tokens', 1)
-      #print(f"Elapsed time: {elapsed_seconds} seconds @ 1 token per {token_generated} second for {1/token_generated} TPS ")
-      #print(f"{response}")
       return response
 
   async def stream_generate(
@@ -157,15 +155,10 @@ class QwenInferenceService:
 
       while True:
         chunk = await asyncio.to_thread(_next_chunk)
-        #print(f"{chunk}")
         if chunk is None:
           break
         delta = chunk["choices"][0]
-        #print(f"{delta}")
         if "text" in delta and delta["text"]:
-            print(f"{delta['text']}")
             payload = json.dumps({"content": f"{delta["text"]}", "context": f"{context}"})
             yield f"{payload}"
-
-#      yield "[DONE]\n\n"
 

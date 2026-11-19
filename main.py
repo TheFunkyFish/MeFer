@@ -155,8 +155,10 @@ async def completions(request: CompletionRequest):
                 full_prompt,
                 max_tokens=request.max_tokens,
                 temperature=request.temperature,
+                context = raw_prompt
             ),
             media_type="text/event-stream",
+
         )
     else:
         reply = await inference_service.complete(
@@ -164,13 +166,13 @@ async def completions(request: CompletionRequest):
             max_tokens=request.max_tokens,
             temperature=request.temperature,
         )
-    reply['context'] = f"""{raw_prompt}
+    reply.context = f"""{raw_prompt}
 {reply['choices'][0]['text']}<|im_end|>
 """
-    reply_string = reply['choices'][0]['text']
-    tools = extract_tool_calls(reply_string) 
-    print(f"{tools}")
-    for tool in tools:
-        print(f"{tool}")
+    #reply_string = reply['choices'][0]['text']
+    #tools = extract_tool_calls(reply_string) 
+    #print(f"{tools}")
+    #for tool in tools:
+    #    print(f"{tool}")
     # content = reply['choices'][0]['text'];
     return reply
