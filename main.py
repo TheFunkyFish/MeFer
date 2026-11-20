@@ -9,6 +9,7 @@ from config import ConfigManager
 import re
 # Configure model path via environment variable or default path
 cfg = ConfigManager('config.yaml')
+print(f"{cfg}")
 inference_service = QwenInferenceService(cfg)
 
 
