@@ -2,7 +2,7 @@
 
 # --- Core Model & Hardware Offloading ---
 # model_path: "/opt/models/Huihui-Qwen3.8-27B-abliterated_Q4K_M.gguf"
-model_path: "/opt/models/Huihui-Qwen3.8-27B-abliterated_IQ3_s.gguf"
+model_path: "/opt/models/Qwen3.8-27B-IQ3_s.gguf"
 n_gpu_layers: 999             # Offload all 64 layers to VRAM (~16.5 GB for Q4_K_M)
 split_mode: 1            # 1 = LAYER split (best for PCIe multi-GPU setups)
 main_gpu: 0
