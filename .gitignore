@@ -1,3 +1,4 @@
 *.memory
 *.system
 *.log
+config.yaml
